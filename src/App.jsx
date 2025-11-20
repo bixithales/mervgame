@@ -298,29 +298,30 @@ const ClassicWordle = ({ onSuccess, onError }) => {
 
 // --- Karanlık Aşaması (Gerçek Onaylı - İnsan Kontrolü) ---
 const DarkChallenge = ({ onSuccess, currentData }) => {
-  const [step, setStep] = useState('loading'); // Başlangıçta yükleniyor
+  const [step, setStep] = useState('loading'); // loading, prompt, pending, rejected
   const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    // Veri yoksa bekle, ama çok uzun sürerse hata ver veya varsayılanı göster
     if (!currentData) {
         const timer = setTimeout(() => {
-            // Eğer 5 saniye içinde veri gelmezse, manuel yükleme moduna geç (Fallback)
             console.warn("Veri gelmedi, manuel moda geçiliyor.");
             setStep('prompt'); 
         }, 5000);
         return () => clearTimeout(timer);
     }
 
-    // Supabase'den gelen status 'approved' ise geç
+    // Durum kontrolü
     if (currentData.status === 'approved') {
       onSuccess();
+    } else if (currentData.status === 'rejected') {
+      setStep('rejected');
     } else if (currentData.status === 'waiting_approval') {
       setStep('pending');
     } else {
-      // Eğer status 'init' veya başka bir şeyse ve proofUrl varsa, yine de pending göster
-      if (currentData.proofUrl) {
+      // Eğer status 'init' ise ama proofUrl varsa ve reddedilmemişse, pending sayabiliriz (sayfa yenileme durumu)
+      // Ancak rejected durumunu yukarıda yakaladığımız için burası güvenli.
+      if (currentData.proofUrl && currentData.status !== 'rejected') {
           setStep('pending');
       } else {
           setStep('prompt');
@@ -331,26 +332,23 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
   const handleFileSelect = async (e) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
-        setUploadError(""); // Hata mesajını temizle
+        setUploadError(""); 
         try {
-            setStep('pending'); // Yükleniyor göstergesi
+            setStep('pending'); 
             const fileName = `${GAME_ROW_ID}_${Date.now()}`;
             
-            // 1. Dosyayı Yükle
             const { data, error: uploadErr } = await supabase.storage
                 .from('proofs')
                 .upload(fileName, file);
 
             if (uploadErr) throw uploadErr;
 
-            // 2. Public URL al
             const { data: publicUrlData } = supabase.storage
                 .from('proofs')
                 .getPublicUrl(fileName);
 
             logActivity('PROOF_UPLOADED', 'Fotoğraf yüklendi. URL veritabanına kaydedildi.');
 
-            // 3. Veritabanını güncelle
             await updateProgress({ 
                 status: 'waiting_approval', 
                 uploadedAt: new Date().toISOString(),
@@ -397,6 +395,17 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
               </div>
            </motion.div>
         )}
+
+        {step === 'rejected' && (
+           <motion.div key="rejected" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="flex flex-col items-center text-center gap-4">
+              <AlertOctagon className="w-16 h-16 text-red-500 animate-shake" />
+              <h2 className="text-red-500 font-orbitron text-lg">KANIT REDDEDİLDİ</h2>
+              <p className="text-gray-400 font-mono text-xs">Yönetici gönderdiğin kanıtı kabul etmedi.</p>
+              <button onClick={() => setStep('prompt')} className="mt-4 px-6 py-3 bg-red-900 hover:bg-red-800 text-white font-orbitron text-sm rounded border border-red-700 flex items-center gap-2 transition-all">
+                 <RefreshCcw className="w-4 h-4" /> TEKRAR DENE
+              </button>
+           </motion.div>
+        )}
       </AnimatePresence>
     </div>
   )
@@ -435,6 +444,13 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
         updateProgress({ status: 'approved', stage: 6 });
         logActivity('ADMIN_ACTION', 'Kanıt onaylandı. Kullanıcı final aşamasına geçirildi.');
         onClose();
+    };
+
+    const handleReject = () => {
+        if(confirm("Kanıtı reddetmek istediğine emin misin?")) {
+            updateProgress({ status: 'rejected' });
+            logActivity('ADMIN_ACTION', 'Kanıt reddedildi. Kullanıcıdan tekrar yükleme istendi.');
+        }
     };
 
     const sendTestLog = async () => {
@@ -497,7 +513,10 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
                                     </div>
                                 )}
                                 
-                                <button onClick={handleApprove} className="w-full mt-3 p-2 bg-green-900/50 hover:bg-green-600 hover:text-black text-green-400 border border-green-700 font-bold text-xs rounded transition-all"> [ AŞAMAYI ONAYLA VE GEÇ ] </button>
+                                <div className="flex gap-2 mt-3">
+                                    <button onClick={handleReject} className="flex-1 p-2 bg-red-900/50 hover:bg-red-600 hover:text-white text-red-400 border border-red-700 font-bold text-xs rounded transition-all"> [ REDDET ] </button>
+                                    <button onClick={handleApprove} className="flex-1 p-2 bg-green-900/50 hover:bg-green-600 hover:text-black text-green-400 border border-green-700 font-bold text-xs rounded transition-all"> [ ONAYLA ] </button>
+                                </div>
                             </div>
                         )}
                         
