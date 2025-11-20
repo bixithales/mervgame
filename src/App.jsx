@@ -254,11 +254,11 @@ const MinimalMap = ({ unlockedLevel, onLevelSelect, onFinalSubmit }) => {
 const UndertaleManager = ({ onComplete }) => {
     const [view, setView] = useState('map'); const [unlockedLevel, setUnlockedLevel] = useState(1); const [currentLevel, setCurrentLevel] = useState(1); const [failures, setFailures] = useState({ 1: 0, 2: 0, 3: 0 }); 
     const startLevel = (lvl) => { setCurrentLevel(lvl); setView('battle'); };
-    const devSkip = () => { onComplete(); };
+    // devSkip removed
     const handleWin = () => { if (currentLevel === unlockedLevel) setUnlockedLevel(prev => prev + 1); setView('map'); };
     const handleLose = () => { setFailures(prev => ({ ...prev, [currentLevel]: prev[currentLevel] + 1 })); setView('map'); };
     const handleFinalSubmit = () => { onComplete(); };
-    return ( <div className="w-full flex flex-col items-center justify-center relative"> <button onClick={devSkip} className="absolute top-[-30px] left-0 text-[8px] bg-white/10 px-2 py-1 rounded text-gray-400 hover:text-white z-50">⏩ GEÇ (TEST)</button> {view === 'map' ? ( <MinimalMap unlockedLevel={unlockedLevel} onLevelSelect={startLevel} onFinalSubmit={handleFinalSubmit} /> ) : ( <UndertaleBattle level={currentLevel} failures={failures[currentLevel]} onWin={handleWin} onLose={handleLose} /> )} </div> );
+    return ( <div className="w-full flex flex-col items-center justify-center relative"> {view === 'map' ? ( <MinimalMap unlockedLevel={unlockedLevel} onLevelSelect={startLevel} onFinalSubmit={handleFinalSubmit} /> ) : ( <UndertaleBattle level={currentLevel} failures={failures[currentLevel]} onWin={handleWin} onLose={handleLose} /> )} </div> );
 };
 
 // --- Klasik Wordle (Tekrar Dene + Ortalı Buton) ---
@@ -277,7 +277,7 @@ const ClassicWordle = ({ onSuccess, onError }) => {
       setBoard(Array(MAX_ATTEMPTS).fill(null).map((_, i) => ({ word: "", colors: Array(5).fill(""), status: i === 0 ? 'active' : 'empty' })));
       setActiveRow(0); setCurrentGuess(""); setLocked(false); setFailed(false);
   };
-  const devSkip = () => { onSuccess(); };
+  // devSkip removed
   const handleInput = (key) => { if (locked || failed) return; if (key === 'ENTER') submitGuess(); else if (key === 'DEL') setCurrentGuess(p => p.slice(0, -1)); else if (currentGuess.length < 5) setCurrentGuess(p => p + key); };
   const submitGuess = async () => { 
       if (currentGuess.length !== 5) { setShake(true); setTimeout(() => setShake(false), 500); return; } 
@@ -293,7 +293,7 @@ const ClassicWordle = ({ onSuccess, onError }) => {
 
   const keys = ["QWERTYUIOPĞÜ".split(""), "ASDFGHJKLŞİ".split(""), "ZXCVBNMÖÇ".split("")];
   return ( <div className="w-full max-w-md mx-auto flex flex-col items-center gap-6 z-20 p-4 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 relative"> 
-    <button onClick={resetGame} className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white bg-white/5 rounded-full hover:bg-white/10 transition-all" title="Oyunu Sıfırla"> <RefreshCcw className="w-4 h-4" /> </button> <button onClick={devSkip} className="absolute top-2 left-2 text-[8px] bg-white/10 px-2 py-1 rounded text-gray-400 hover:text-white">⏩ GEÇ (TEST)</button> <div className="flex flex-col gap-2 w-full items-center mt-4"> {board.map((row, ri) => ( <motion.div key={ri} animate={row.status==='active' && shake ? {x:[-5,5,0]} : {}} className={`flex gap-2 ${row.status==='empty'?'opacity-30':''}`}> {[...Array(5)].map((_, i) => ( <div key={i} className={`w-12 h-12 flex items-center justify-center text-xl font-bold text-white border-2 rounded ${row.status==='revealed'?row.colors[i]:'border-gray-500 bg-black/40'}`}> {row.status==='active' && ri===activeRow ? currentGuess[i] : row.word[i]} </div> ))} </motion.div> ))} </div> <div className="flex flex-col gap-2 w-full"> {keys.map((r,i)=><div key={i} className="flex justify-center gap-1">{r.map(k=><button key={k} onClick={()=>handleInput(k)} className="px-2 py-3 bg-white/10 rounded text-white text-xs font-bold min-w-[30px]">{k}</button>)} {i===2&&<><button onClick={()=>handleInput('DEL')} className="px-3 bg-red-900/50 text-white text-xs rounded">SIL</button><button onClick={()=>handleInput('ENTER')} className="px-3 bg-green-900/50 text-white text-xs rounded">GİR</button></>}</div>)} </div> {activeRow>=3&&!showHint&&<button onClick={()=>setShowHint(true)} className="flex items-center gap-2 text-yellow-400 text-sm font-orbitron mt-2"><HelpCircle size={16}/> İPUCU</button>} {showHint&&<div className="text-yellow-300 font-cinzel italic bg-black/60 px-4 py-2 rounded border border-yellow-500/30">"Sessiz öğretmen."</div>} </div> );
+    <button onClick={resetGame} className="absolute top-2 right-2 p-2 text-gray-400 hover:text-white bg-white/5 rounded-full hover:bg-white/10 transition-all" title="Oyunu Sıfırla"> <RefreshCcw className="w-4 h-4" /> </button> <div className="flex flex-col gap-2 w-full items-center mt-4"> {board.map((row, ri) => ( <motion.div key={ri} animate={row.status==='active' && shake ? {x:[-5,5,0]} : {}} className={`flex gap-2 ${row.status==='empty'?'opacity-30':''}`}> {[...Array(5)].map((_, i) => ( <div key={i} className={`w-12 h-12 flex items-center justify-center text-xl font-bold text-white border-2 rounded ${row.status==='revealed'?row.colors[i]:'border-gray-500 bg-black/40'}`}> {row.status==='active' && ri===activeRow ? currentGuess[i] : row.word[i]} </div> ))} </motion.div> ))} </div> <div className="flex flex-col gap-2 w-full"> {keys.map((r,i)=><div key={i} className="flex justify-center gap-1">{r.map(k=><button key={k} onClick={()=>handleInput(k)} className="px-2 py-3 bg-white/10 rounded text-white text-xs font-bold min-w-[30px]">{k}</button>)} {i===2&&<><button onClick={()=>handleInput('DEL')} className="px-3 bg-red-900/50 text-white text-xs rounded">SIL</button><button onClick={()=>handleInput('ENTER')} className="px-3 bg-green-900/50 text-white text-xs rounded">GİR</button></>}</div>)} </div> {activeRow>=3&&!showHint&&<button onClick={()=>setShowHint(true)} className="flex items-center gap-2 text-yellow-400 text-sm font-orbitron mt-2"><HelpCircle size={16}/> İPUCU</button>} {showHint&&<div className="text-yellow-300 font-cinzel italic bg-black/60 px-4 py-2 rounded border border-yellow-500/30">"Sessiz öğretmen."</div>} </div> );
 };
 
 // --- Karanlık Aşaması (Gerçek Onaylı - İnsan Kontrolü) ---
@@ -592,7 +592,7 @@ const FinalPasswordChallenge = ({ onUnlock, onError }) => {
             <p className="text-gray-400 font-orbitron text-xs text-center">"Her şeyin bir karşılığı vardır..."</p>
             <form onSubmit={(e) => { e.preventDefault(); onUnlock(pass); }} className="w-full">
                 <input type="text" autoFocus value={pass} onChange={e=>setPass(e.target.value)} placeholder="ŞİFRE" className="w-full bg-transparent border-b-2 border-red-500 py-3 text-center text-2xl text-red-100 font-cinzel focus:outline-none placeholder:text-red-900/50" />
-                <button type="submit" className="w-full mt-6 py-4 bg-red-600 hover:bg-red-500 text-black font-bold font-orbitron tracking-[0.5em] transition-all rounded">ÖDE</button>
+                <button type="submit" className="w-full mt-6 py-4 bg-red-600 hover:bg-red-500 text-black font-bold font-orbitron tracking-[0.5em] transition-all rounded">İLERLE</button>
             </form>
         </motion.div>
     );
@@ -751,7 +751,7 @@ export default function App() {
   const handleLogin2 = (e) => { 
       e.preventDefault(); 
       logActivity('LOGIN_ATTEMPT_2', password);
-      if(password.trim().toUpperCase('TR')==='GEZEGEN') { saveProgress(3); setPassword(""); } 
+      if(password.trim().toUpperCase('TR')==='AVOKADO') { saveProgress(3); setPassword(""); } 
       else triggerError(); 
   }; 
   const handleLogin3 = (e) => { 
@@ -763,7 +763,7 @@ export default function App() {
 
   const handleLogin4 = (pass) => {
       logActivity('LOGIN_ATTEMPT_FINAL', pass);
-      if(pass.trim().toLocaleUpperCase('tr-TR') === 'BEDEL') { 
+      if(pass.trim().toLocaleUpperCase('tr-TR') === 'HAZİNE') { 
           saveProgress(7); 
       } else { 
           triggerError(); 
@@ -824,10 +824,11 @@ export default function App() {
             {/* STAGE 1: WORDLE (KİTAP) */}
             {gameStage===1 && <motion.div key="wordle" variants={fade} initial="hidden" animate="visible" exit="exit" className="w-full"><ClassicWordle onSuccess={handleWordleSuccess} onError={triggerError} /></motion.div>}
 
-            {/* STAGE 2: LOGIN 2 (GEZEGEN) */}
+            {/* STAGE 2: LOGIN 2 (GEZEGEN -> AVOKADO) */}
             {gameStage===2 && (
                 <motion.div key="l2" variants={fade} initial="hidden" animate="visible" exit="exit" className="w-full max-w-md flex flex-col items-center gap-6 bg-black/40 p-8 rounded-2xl border border-blue-500/30 backdrop-blur-md">
                     <Key className={`w-12 h-12 ${errorCount>3?'text-red-500 animate-pulse':'text-blue-400'}`} />
+                    <p className="text-blue-200 font-cinzel text-sm text-center italic max-w-xs">"Yemeyi en sevdiğin meyve belki meyve belki sebze belki de bir oyuncak"</p>
                     <form onSubmit={handleLogin2} className="w-full"><input type="text" autoFocus value={password} onChange={e=>setPassword(e.target.value)} placeholder="......" className={`w-full bg-transparent border-b py-3 text-center text-2xl text-white font-cinzel focus:outline-none transition-colors ${error?'border-red-500 text-red-500':'border-blue-500/30 focus:border-blue-400'}`} /><button type="submit" className="w-full mt-6 py-3 bg-blue-900/30 hover:bg-blue-900/50 rounded text-blue-400 font-orbitron tracking-widest transition-all">GİRİŞ</button></form>
                 </motion.div>
             )}
@@ -866,7 +867,6 @@ export default function App() {
             {gameStage===7 && (
                 <motion.div key="final" variants={fade} initial="hidden" animate="visible" className="text-center">
                     <h1 className="text-6xl md:text-8xl font-cinzel text-green-500 drop-shadow-[0_0_30px_rgba(0,255,0,0.6)]">BAŞARILI</h1>
-                    <div className="flex justify-center gap-4 mt-8"><Rocket className="w-12 h-12 text-white animate-bounce" /><Star className="w-12 h-12 text-yellow-400 animate-pulse" /></div>
                     <p className="mt-6 text-gray-400 font-orbitron tracking-[0.5em] text-xs">GÖREV TAMAMLANDI</p>
                 </motion.div>
             )}
