@@ -2,36 +2,21 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ArrowRight, HelpCircle, Key, Rocket, Star, Heart, ShieldCheck, DoorOpen, RefreshCcw, Infinity, Upload, Scan, AlertOctagon, Eye, Settings, Radio } from 'lucide-react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { createClient } from '@supabase/supabase-js';
 
-// --- FIREBASE KURULUMU ---
-const firebaseConfig = {
-  apiKey: "AIzaSyB60LDBpsqwCDZm6FtlhZqIiUaedq2qdYw",
-  authDomain: "mervearg-2a516.firebaseapp.com",
-  projectId: "mervearg-2a516",
-  storageBucket: "mervearg-2a516.firebasestorage.app",
-  messagingSenderId: "517370332542",
-  appId: "1:517370332542:web:b66e6863e88d9340795f2f",
-  measurementId: "G-7YEH79W56Q"
-};
+// --- SUPABASE KURULUMU ---
+// Bu değerler .env dosyasından veya Vercel Environment Variables ayarlarından gelir.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Firebase başlatma (Hata korumalı)
-let app, auth, db, storage;
-try {
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-  storage = getStorage(app);
-} catch (e) {
-  console.warn("Firebase başlatılamadı, çevrimdışı mod aktif:", e);
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error("Supabase anahtarları eksik! Lütfen .env dosyasını veya Vercel ayarlarını kontrol edin.");
 }
 
-const appId = "merve-game-v1"; 
-const GAME_COLLECTION = "games";
-const GAME_DOC_ID = "merve_progress";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const GAME_TABLE = "games";
+const GAME_ROW_ID = "merve_progress"; // Tek bir satır kullanacağız
 
 // --- Fontlar ve Stiller ---
 const FontStyles = () => (
@@ -294,7 +279,7 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
   useEffect(() => {
     if (!currentData) return; // Veri gelene kadar bekle
 
-    // Firebase'den gelen status 'approved' ise geç
+    // Supabase'den gelen status 'approved' ise geç
     if (currentData.status === 'approved') {
       onSuccess();
     } else if (currentData.status === 'waiting_approval') {
@@ -307,28 +292,30 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
   const handleFileSelect = async (e) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
-        // Offline mode için
-        if (!auth.currentUser) {
-             setStep('pending');
-        } else {
-             try {
-                 setStep('pending'); // Yükleniyor göstergesi eklenebilir
-                 const storageRef = ref(storage, `proofs/${GAME_DOC_ID}_${Date.now()}`);
-                 const snapshot = await uploadBytes(storageRef, file);
-                 const downloadURL = await getDownloadURL(snapshot.ref);
-                 
-                 logActivity('PROOF_UPLOADED', 'Fotoğraf yüklendi. URL veritabanına kaydedildi.');
+        try {
+            setStep('pending'); // Yükleniyor göstergesi
+            const fileName = `${GAME_ROW_ID}_${Date.now()}`;
+            const { data, error } = await supabase.storage
+                .from('proofs')
+                .upload(fileName, file);
 
-                 updateProgress({ 
-                     status: 'waiting_approval', 
-                     uploadedAt: new Date().toISOString(),
-                     proofUrl: downloadURL
-                 });
-             } catch (error) {
-                 console.error("Upload failed", error);
-                 setError(true);
-                 setStep('prompt');
-             }
+            if (error) throw error;
+
+            const { data: publicUrlData } = supabase.storage
+                .from('proofs')
+                .getPublicUrl(fileName);
+
+            logActivity('PROOF_UPLOADED', 'Fotoğraf yüklendi. URL veritabanına kaydedildi.');
+
+            updateProgress({ 
+                status: 'waiting_approval', 
+                uploadedAt: new Date().toISOString(),
+                proofUrl: publicUrlData.publicUrl
+            });
+        } catch (error) {
+            console.error("Upload failed", error);
+            setError(true);
+            setStep('prompt');
         }
     }
   };
@@ -375,17 +362,14 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
 
     const handleReset = () => {
         if (confirm("DİKKAT: Bu işlem Merve'nin tüm ilerlemesini ve veritabanını sıfırlar. Emin misin?")) {
-            if (auth.currentUser) {
-                setDoc(doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID), { stage: 0, status: 'init', lastUpdate: new Date().toISOString() });
-            }
-            onClose();
+            supabase.from(GAME_TABLE).upsert({ id: GAME_ROW_ID, stage: 0, status: 'init', lastUpdate: new Date().toISOString(), history: [] }).then(() => {
+                onClose();
+            });
         }
     };
     const handleApprove = () => {
-        if (auth.currentUser) {
-             updateDoc(doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID), { status: 'approved', stage: 6 });
-             logActivity('ADMIN_ACTION', 'Kanıt onaylandı. Kullanıcı final aşamasına geçirildi.');
-        }
+        updateProgress({ status: 'approved', stage: 6 });
+        logActivity('ADMIN_ACTION', 'Kanıt onaylandı. Kullanıcı final aşamasına geçirildi.');
         onClose();
     };
 
@@ -407,7 +391,7 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
         <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-4">
             <div className="bg-gray-900 border border-green-500 p-6 rounded w-full max-w-4xl font-mono text-green-500 max-h-[90vh] overflow-y-auto flex flex-col gap-4 shadow-[0_0_50px_rgba(0,255,0,0.2)]">
                 <div className="flex justify-between items-center border-b border-green-800 pb-2"> 
-                    <h2 className="text-xl font-bold tracking-widest">ADMIN CONSOLE v2.2</h2> 
+                    <h2 className="text-xl font-bold tracking-widest">ADMIN CONSOLE v2.2 (SUPABASE)</h2> 
                     <button onClick={onClose} className="hover:text-white text-xl">&times;</button> 
                 </div>
                 
@@ -417,7 +401,7 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
                         <div className="text-xs border border-green-900 p-3 bg-black/50 rounded"> 
                             <p className="font-bold text-green-400 mb-2 border-b border-green-900/50 pb-1">SYSTEM STATUS</p>
                             <div className="grid grid-cols-2 gap-2">
-                                <span className="text-gray-500">Connection:</span> <span className={auth.currentUser ? "text-green-400" : "text-red-500"}>{auth.currentUser ? "ONLINE" : "OFFLINE"}</span>
+                                <span className="text-gray-500">Connection:</span> <span className="text-green-400">ONLINE</span>
                                 <span className="text-gray-500">User Stage:</span> <span className="text-white font-bold">{currentData?.stage || 0}</span>
                                 <span className="text-gray-500">Status:</span> <span className="text-white font-bold">{currentData?.status || 'N/A'}</span>
                                 <span className="text-gray-500">Last Update:</span> <span className="text-white">{currentData?.lastUpdate ? new Date(currentData.lastUpdate).toLocaleTimeString() : 'N/A'}</span>
@@ -491,23 +475,25 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
 // --- Yardımcı Fonksiyon: Veri Güncelleme ---
 const updateProgress = async (data) => {
     try {
-        if (!auth.currentUser) return;
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID);
-        await updateDoc(docRef, data);
+        await supabase.from(GAME_TABLE).update(data).eq('id', GAME_ROW_ID);
     } catch (e) { console.error("Update failed", e); }
 };
 
 const logActivity = async (type, detail) => {
     try {
-        if (!auth.currentUser) return;
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID);
-        await updateDoc(docRef, {
-            history: arrayUnion({
-                type: type,
-                detail: detail,
-                timestamp: new Date().toISOString()
-            })
-        });
+        // Önce mevcut veriyi çek
+        const { data: currentData } = await supabase.from(GAME_TABLE).select('history').eq('id', GAME_ROW_ID).single();
+        
+        const newLog = {
+            type: type,
+            detail: detail,
+            timestamp: new Date().toISOString()
+        };
+
+        const currentHistory = currentData?.history || [];
+        const newHistory = [...currentHistory, newLog];
+
+        await supabase.from(GAME_TABLE).update({ history: newHistory }).eq('id', GAME_ROW_ID);
     } catch (e) { console.error("Log failed", e); }
 };
 
@@ -524,14 +510,6 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (e) { console.log("Offline mode"); }
-        
         // Local Storage Check first for instant load
         const savedLocal = localStorage.getItem('merve_universe_v23');
         if (savedLocal) {
@@ -544,28 +522,37 @@ export default function App() {
             setLoading(false);
         }
 
-        // Then Firebase Sync
-        if (auth.currentUser) {
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID);
-            const unsub = onSnapshot(docRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
+        // Supabase Realtime Subscription
+        const channel = supabase
+            .channel('custom-all-channel')
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: GAME_TABLE, filter: `id=eq.${GAME_ROW_ID}` },
+                (payload) => {
+                    const data = payload.new;
                     setServerData(data);
                     
-                    // SADECE kullanıcı zaten giriş yapmışsa (stage > 0) veritabanından güncelle
-                    // Bu sayede siteye yeni giren biri direkt Merve'nin kaldığı yeri görmez, şifreyi girmesi gerekir.
                     const localStage = parseInt(localStorage.getItem('merve_universe_v23') || '0');
-                    
                     if (localStage > 0 && data.stage !== undefined && data.stage > localStage) {
                         setGameStage(data.stage);
                         localStorage.setItem('merve_universe_v23', data.stage.toString());
                     }
-                } else {
-                    setDoc(docRef, { stage: 0, status: 'init' });
                 }
-            });
-            return () => unsub();
+            )
+            .subscribe();
+
+        // Initial Fetch
+        const { data, error } = await supabase.from(GAME_TABLE).select('*').eq('id', GAME_ROW_ID).single();
+        if (data) {
+            setServerData(data);
+        } else if (!data && !error) {
+            // Create initial row if not exists
+            await supabase.from(GAME_TABLE).insert([{ id: GAME_ROW_ID, stage: 0, status: 'init', history: [] }]);
         }
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     };
     init();
   }, []);
@@ -575,12 +562,10 @@ export default function App() {
       setGameStage(stage); 
       localStorage.setItem('merve_universe_v23', stage.toString()); 
       setErrorCount(0);
-      if (auth.currentUser) {
-          const docRef = doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID);
-          // Sadece ileriye dönük güncelleme yap (Geriye düşürme)
-          if (serverData && serverData.stage > stage) return;
-          updateDoc(docRef, { stage: stage });
-      }
+      
+      // Sadece ileriye dönük güncelleme yap (Geriye düşürme)
+      if (serverData && serverData.stage > stage) return;
+      updateProgress({ stage: stage });
   };
   const triggerError = () => { setError(true); setErrorCount(c=>c+1); setTimeout(()=>setError(false),500); };
 

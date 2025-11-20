@@ -2,37 +2,34 @@
 
 Projeniz başarıyla derlendi (build edildi). Şimdi `dist` klasörünü yayınlayarak sitenizi internette paylaşabilirsiniz.
 
-## Yöntem 1: Netlify (En Kolay)
+## Yöntem 1: Vercel (Önerilen)
 
-1.  Tarayıcınızda [Netlify Drop](https://app.netlify.com/drop) adresine gidin.
-2.  Bilgisayarınızdaki proje klasörünün içindeki **`dist`** klasörünü bulun.
-3.  Bu `dist` klasörünü sürükleyip Netlify sayfasındaki kutucuğa bırakın.
-4.  Siteniz saniyeler içinde yayına girecek ve size bir link verilecektir.
+Projeniz GitHub'a bağlı olduğu için Vercel en iyi seçenektir.
 
-## Yöntem 2: Vercel
+1.  [Vercel.com](https://vercel.com) adresine gidin ve GitHub hesabınızla giriş yapın.
+2.  "Add New Project" butonuna tıklayın.
+3.  GitHub reponuzu (`mervv` veya benzeri) seçin ve "Import" deyin.
+4.  **Build Command:** `npm run build` (Otomatik algılanır)
+5.  **Output Directory:** `dist` (Otomatik algılanır)
+6.  **Environment Variables (ÖNEMLİ):** Projenin çalışması için aşağıdaki ayarları eklemelisiniz:
+    *   `VITE_SUPABASE_URL`: Supabase Proje URL'niz (Örn: https://xyz.supabase.co)
+    *   `VITE_SUPABASE_ANON_KEY`: Supabase Anon Key'iniz (uzun şifreli metin)
+7.  "Deploy" butonuna basın.
 
-1.  [Vercel.com](https://vercel.com) adresinde bir hesap oluşturun.
-2.  "Add New Project" diyerek projenizi ekleyin.
-3.  Eğer projeniz GitHub'da ise oradan seçebilirsiniz.
-4.  Değilse, Vercel CLI yükleyerek terminalden `vercel` yazıp yayınlayabilirsiniz.
+## Yöntem 2: Netlify (Manuel Sürükle-Bırak)
 
-## Yöntem 3: Firebase Hosting (Projeniz Firebase kullanıyor)
-
-Projeniz zaten Firebase kullandığı için en profesyonel yöntem budur ama biraz kurulum gerektirir.
-
-1.  Terminalde `npm install -g firebase-tools` yazın.
-2.  `firebase login` yazarak giriş yapın.
-3.  `firebase init` yazın ve "Hosting" seçeneğini seçin.
-4.  Public directory olarak `dist` yazın.
-5.  Single page app? sorusuna `Yes` deyin.
-6.  `firebase deploy` yazarak yayınlayın.
+1.  Terminalde `npm run build` komutunu çalıştırın.
+2.  Tarayıcınızda [Netlify Drop](https://app.netlify.com/drop) adresine gidin.
+3.  Bilgisayarınızdaki proje klasörünün içindeki **`dist`** klasörünü bulun.
+4.  Bu `dist` klasörünü sürükleyip Netlify sayfasındaki kutucuğa bırakın.
+5.  Siteniz saniyeler içinde yayına girecek.
 
 ## Sitemi Nasıl Güncellerim?
 
-Sitenizde bir değişiklik yaptığınızda (örneğin kod değiştirdiniz veya bir hata düzelttiniz), bu değişikliğin internetteki sitenizde görünmesi için **tekrar yayınlamanız** gerekir.
+**Vercel (GitHub Bağlantılı):**
+Sadece kodunuzu GitHub'a gönderin (`git push`). Vercel otomatik olarak algılayıp sitenizi güncelleyecektir.
 
-1.  Değişikliklerinizi yapın ve kaydedin.
-2.  Terminalde tekrar `npm run build` komutunu çalıştırın.
-3.  Yeni oluşan `dist` klasörünü tekrar Netlify'a sürükleyin (veya kullandığınız yönteme göre tekrar deploy edin).
-
-**İpucu:** Eğer bu işlemden sıkılırsanız, projenizi bir GitHub hesabına yükleyip Netlify/Vercel'i GitHub'a bağlayabilirsiniz. Böylece siz kodunuzu kaydettiğinizde site otomatik olarak güncellenir.
+**Manuel Yöntem:**
+1.  Değişikliklerinizi yapın.
+2.  `npm run build` çalıştırın.
+3.  Yeni `dist` klasörünü tekrar yükleyin.
