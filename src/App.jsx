@@ -300,6 +300,7 @@ const ClassicWordle = ({ onSuccess, onError }) => {
 const DarkChallenge = ({ onSuccess, currentData }) => {
   const [step, setStep] = useState('loading'); // loading, prompt, pending, rejected
   const [uploadError, setUploadError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -315,26 +316,32 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
     if (currentData.status === 'approved') {
       onSuccess();
     } else if (currentData.status === 'rejected') {
+      setIsUploading(false);
       setStep('rejected');
     } else if (currentData.status === 'waiting_approval') {
+      setIsUploading(false);
       setStep('pending');
     } else {
-      // Eğer status 'init' ise ama proofUrl varsa ve reddedilmemişse, pending sayabiliriz (sayfa yenileme durumu)
-      // Ancak rejected durumunu yukarıda yakaladığımız için burası güvenli.
-      if (currentData.proofUrl && currentData.status !== 'rejected') {
-          setStep('pending');
-      } else {
-          setStep('prompt');
+      // Eğer status 'init' ise ama proofUrl varsa ve reddedilmemişse, pending sayabiliriz
+      // Ancak yükleme yapılıyorsa (isUploading) buraya girip prompt'a dönmesini engelliyoruz.
+      if (!isUploading) {
+          if (currentData.proofUrl && currentData.status !== 'rejected') {
+              setStep('pending');
+          } else {
+              setStep('prompt');
+          }
       }
     }
-  }, [currentData, onSuccess]);
+  }, [currentData, onSuccess, isUploading]);
 
   const handleFileSelect = async (e) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
         setUploadError(""); 
+        setIsUploading(true);
+        setStep('pending'); // Hemen arayüzü güncelle
+
         try {
-            setStep('pending'); 
             const fileName = `${GAME_ROW_ID}_${Date.now()}`;
             
             const { data, error: uploadErr } = await supabase.storage
@@ -355,12 +362,22 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
                 proofUrl: publicUrlData.publicUrl
             });
             
+            // isUploading burada false yapılmaz, useEffect status='waiting_approval' görünce yapacak.
+            
         } catch (error) {
             console.error("Upload failed", error);
             setUploadError("Yükleme Hatası: " + error.message);
+            setIsUploading(false);
             setStep('prompt');
         }
     }
+  };
+
+  const handleRetry = async () => {
+      setStep('loading');
+      // Veritabanını sıfırla ki "rejected" durumundan çıksın
+      await updateProgress({ status: 'init', proofUrl: null });
+      // useEffect 'init' durumunu görünce otomatik 'prompt'a geçecek
   };
 
   if (step === 'loading') return <div className="text-yellow-500 font-orbitron animate-pulse tracking-widest">BAĞLANTI KURULUYOR...</div>;
@@ -401,7 +418,7 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
               <AlertOctagon className="w-16 h-16 text-red-500 animate-shake" />
               <h2 className="text-red-500 font-orbitron text-lg">KANIT REDDEDİLDİ</h2>
               <p className="text-gray-400 font-mono text-xs">Yönetici gönderdiğin kanıtı kabul etmedi.</p>
-              <button onClick={() => setStep('prompt')} className="mt-4 px-6 py-3 bg-red-900 hover:bg-red-800 text-white font-orbitron text-sm rounded border border-red-700 flex items-center gap-2 transition-all">
+              <button onClick={handleRetry} className="mt-4 px-6 py-3 bg-red-900 hover:bg-red-800 text-white font-orbitron text-sm rounded border border-red-700 flex items-center gap-2 transition-all">
                  <RefreshCcw className="w-4 h-4" /> TEKRAR DENE
               </button>
            </motion.div>
