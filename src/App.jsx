@@ -371,6 +371,8 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
 
 // --- Admin Paneli (Gizli) ---
 const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
+    const [testStatus, setTestStatus] = useState('');
+
     const handleReset = () => {
         if (confirm("DİKKAT: Bu işlem Merve'nin tüm ilerlemesini ve veritabanını sıfırlar. Emin misin?")) {
             if (auth.currentUser) {
@@ -386,6 +388,17 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
         }
         onClose();
     };
+
+    const sendTestLog = async () => {
+        setTestStatus('Gönderiliyor...');
+        try {
+            await logActivity('TEST_SIGNAL', 'Admin panelinden test sinyali gönderildi.');
+            setTestStatus('Başarılı! Loglara bakın.');
+            setTimeout(() => setTestStatus(''), 3000);
+        } catch (e) {
+            setTestStatus('HATA: ' + e.message);
+        }
+    };
     
     // Sort history by timestamp descending (newest first)
     const logs = currentData?.history ? [...currentData.history].reverse() : [];
@@ -394,7 +407,7 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
         <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-4">
             <div className="bg-gray-900 border border-green-500 p-6 rounded w-full max-w-4xl font-mono text-green-500 max-h-[90vh] overflow-y-auto flex flex-col gap-4 shadow-[0_0_50px_rgba(0,255,0,0.2)]">
                 <div className="flex justify-between items-center border-b border-green-800 pb-2"> 
-                    <h2 className="text-xl font-bold tracking-widest">ADMIN CONSOLE v2.1</h2> 
+                    <h2 className="text-xl font-bold tracking-widest">ADMIN CONSOLE v2.2</h2> 
                     <button onClick={onClose} className="hover:text-white text-xl">&times;</button> 
                 </div>
                 
@@ -404,9 +417,16 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
                         <div className="text-xs border border-green-900 p-3 bg-black/50 rounded"> 
                             <p className="font-bold text-green-400 mb-2 border-b border-green-900/50 pb-1">SYSTEM STATUS</p>
                             <div className="grid grid-cols-2 gap-2">
+                                <span className="text-gray-500">Connection:</span> <span className={auth.currentUser ? "text-green-400" : "text-red-500"}>{auth.currentUser ? "ONLINE" : "OFFLINE"}</span>
                                 <span className="text-gray-500">User Stage:</span> <span className="text-white font-bold">{currentData?.stage || 0}</span>
                                 <span className="text-gray-500">Status:</span> <span className="text-white font-bold">{currentData?.status || 'N/A'}</span>
                                 <span className="text-gray-500">Last Update:</span> <span className="text-white">{currentData?.lastUpdate ? new Date(currentData.lastUpdate).toLocaleTimeString() : 'N/A'}</span>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-green-900/30">
+                                <button onClick={sendTestLog} className="text-[10px] bg-green-900/30 hover:bg-green-900/50 px-2 py-1 rounded text-green-300 border border-green-800 w-full">
+                                    TEST SİNYALİ GÖNDER
+                                </button>
+                                {testStatus && <p className="text-[10px] mt-1 text-yellow-400">{testStatus}</p>}
                             </div>
                         </div>
 
@@ -444,6 +464,7 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
                                 <div className="h-full flex flex-col items-center justify-center text-gray-600 gap-2">
                                     <Radio size={24} className="animate-pulse"/>
                                     <p className="text-[10px] italic">No signals detected yet...</p>
+                                    <p className="text-[9px] text-gray-700">Veritabanı bekleniyor...</p>
                                 </div>
                             ) : (
                                 logs.map((log, i) => (
