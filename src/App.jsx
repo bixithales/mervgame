@@ -513,6 +513,22 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
     )
 };
 
+// --- YENİ: Final Şifre Ekranı (BEDEL) ---
+const FinalPasswordChallenge = ({ onUnlock, onError }) => {
+    const [pass, setPass] = useState("");
+    return (
+        <motion.div initial={{opacity:0, scale:0.9}} animate={{opacity:1, scale:1}} className="w-full max-w-md flex flex-col items-center gap-6 bg-red-900/20 p-8 rounded-2xl border border-red-500/50 backdrop-blur-md shadow-[0_0_100px_rgba(255,0,0,0.3)]">
+            <AlertOctagon className="w-16 h-16 text-red-500 animate-pulse" />
+            <h2 className="text-3xl font-cinzel text-red-500 tracking-widest text-center font-bold">SON BİR ADIM</h2>
+            <p className="text-gray-400 font-orbitron text-xs text-center">"Her şeyin bir karşılığı vardır..."</p>
+            <form onSubmit={(e) => { e.preventDefault(); onUnlock(pass); }} className="w-full">
+                <input type="text" autoFocus value={pass} onChange={e=>setPass(e.target.value)} placeholder="ŞİFRE" className="w-full bg-transparent border-b-2 border-red-500 py-3 text-center text-2xl text-red-100 font-cinzel focus:outline-none placeholder:text-red-900/50" />
+                <button type="submit" className="w-full mt-6 py-4 bg-red-600 hover:bg-red-500 text-black font-bold font-orbitron tracking-[0.5em] transition-all rounded">ÖDE</button>
+            </form>
+        </motion.div>
+    );
+};
+
 // --- Yardımcı Fonksiyon: Veri Güncelleme ---
 const updateProgress = async (data) => {
     try {
@@ -653,6 +669,15 @@ export default function App() {
       if(password.trim().toUpperCase('TR')==='SONSUZLUK') { saveProgress(5); setPassword(""); } 
       else triggerError(); 
   }; 
+
+  const handleLogin4 = (pass) => {
+      logActivity('LOGIN_ATTEMPT_FINAL', pass);
+      if(pass.trim().toLocaleUpperCase('tr-TR') === 'BEDEL') { 
+          saveProgress(7); 
+      } else { 
+          triggerError(); 
+      }
+  };
   
   const handleWordleSuccess = () => { saveProgress(2); setPassword(""); };
   const handleUndertaleSuccess = () => { saveProgress(4); setPassword(""); }; 
@@ -739,8 +764,15 @@ export default function App() {
                 </motion.div>
             )}
 
-            {/* STAGE 6: FINAL */}
+            {/* STAGE 6: FINAL PASSWORD (BEDEL) */}
             {gameStage===6 && (
+                <motion.div key="l4" variants={fade} initial="hidden" animate="visible" exit="exit" className="w-full flex justify-center">
+                    <FinalPasswordChallenge onUnlock={handleLogin4} onError={triggerError} />
+                </motion.div>
+            )}
+
+            {/* STAGE 7: REAL FINAL */}
+            {gameStage===7 && (
                 <motion.div key="final" variants={fade} initial="hidden" animate="visible" className="text-center">
                     <h1 className="text-6xl md:text-8xl font-cinzel text-green-500 drop-shadow-[0_0_30px_rgba(0,255,0,0.6)]">BAŞARILI</h1>
                     <div className="flex justify-center gap-4 mt-8"><Rocket className="w-12 h-12 text-white animate-bounce" /><Star className="w-12 h-12 text-yellow-400 animate-pulse" /></div>
