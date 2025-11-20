@@ -516,7 +516,12 @@ export default function App() {
                 if (snapshot.exists()) {
                     const data = snapshot.data();
                     setServerData(data);
-                    if (data.stage !== undefined && data.stage > gameStage) {
+                    
+                    // SADECE kullanıcı zaten giriş yapmışsa (stage > 0) veritabanından güncelle
+                    // Bu sayede siteye yeni giren biri direkt Merve'nin kaldığı yeri görmez, şifreyi girmesi gerekir.
+                    const localStage = parseInt(localStorage.getItem('merve_universe_v23') || '0');
+                    
+                    if (localStage > 0 && data.stage !== undefined && data.stage > localStage) {
                         setGameStage(data.stage);
                         localStorage.setItem('merve_universe_v23', data.stage.toString());
                     }
@@ -537,6 +542,8 @@ export default function App() {
       setErrorCount(0);
       if (auth.currentUser) {
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID);
+          // Sadece ileriye dönük güncelleme yap (Geriye düşürme)
+          if (serverData && serverData.stage > stage) return;
           updateDoc(docRef, { stage: stage });
       }
   };
@@ -545,7 +552,17 @@ export default function App() {
   const handleLogin1 = (e) => { 
       e.preventDefault(); 
       logActivity('LOGIN_ATTEMPT_1', password);
-      if(password.trim().toUpperCase('TR')==='DÜNYA') { saveProgress(1); setPassword(""); } 
+      if(password.trim().toUpperCase('TR')==='DÜNYA') { 
+          // Şifre doğruysa: Önce veritabanındaki kaydı kontrol et
+          if (serverData && serverData.stage > 1) {
+              // Eğer veritabanında daha ileri bir seviye varsa oraya ışınla (Kaldığı yerden devam)
+              saveProgress(serverData.stage);
+          } else {
+              // Yoksa normal devam et
+              saveProgress(1); 
+          }
+          setPassword(""); 
+      } 
       else if(password.trim() === 'ADMIN') { setShowAdmin(true); } 
       else triggerError(); 
   };
