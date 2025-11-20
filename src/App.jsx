@@ -299,7 +299,7 @@ const ClassicWordle = ({ onSuccess, onError }) => {
 // --- Karanlık Aşaması (Gerçek Onaylı - İnsan Kontrolü) ---
 const DarkChallenge = ({ onSuccess, currentData }) => {
   const [step, setStep] = useState('loading'); // Başlangıçta yükleniyor
-  const [error, setError] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -326,29 +326,35 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
   const handleFileSelect = async (e) => {
     if (e.target.files && e.target.files[0]) {
         const file = e.target.files[0];
+        setUploadError(""); // Hata mesajını temizle
         try {
             setStep('pending'); // Yükleniyor göstergesi
             const fileName = `${GAME_ROW_ID}_${Date.now()}`;
-            const { data, error } = await supabase.storage
+            
+            // 1. Dosyayı Yükle
+            const { data, error: uploadErr } = await supabase.storage
                 .from('proofs')
                 .upload(fileName, file);
 
-            if (error) throw error;
+            if (uploadErr) throw uploadErr;
 
+            // 2. Public URL al
             const { data: publicUrlData } = supabase.storage
                 .from('proofs')
                 .getPublicUrl(fileName);
 
             logActivity('PROOF_UPLOADED', 'Fotoğraf yüklendi. URL veritabanına kaydedildi.');
 
-            updateProgress({ 
+            // 3. Veritabanını güncelle
+            await updateProgress({ 
                 status: 'waiting_approval', 
                 uploadedAt: new Date().toISOString(),
                 proofUrl: publicUrlData.publicUrl
             });
+            
         } catch (error) {
             console.error("Upload failed", error);
-            setError(true);
+            setUploadError("Yükleme Hatası: " + error.message);
             setStep('prompt');
         }
     }
@@ -372,6 +378,7 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
                <Upload className="w-4 h-4" /> KANITI YÜKLE
              </button>
              <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept="image/*" className="hidden" />
+             {uploadError && <div className="text-red-500 text-xs font-mono bg-red-900/20 p-2 rounded border border-red-900 mt-2">{uploadError}</div>}
           </motion.div>
         )}
 
