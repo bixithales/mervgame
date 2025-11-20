@@ -303,7 +303,15 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    if (!currentData) return; // Veri gelene kadar bekle
+    // Veri yoksa bekle, ama çok uzun sürerse hata ver veya varsayılanı göster
+    if (!currentData) {
+        const timer = setTimeout(() => {
+            // Eğer 5 saniye içinde veri gelmezse, manuel yükleme moduna geç (Fallback)
+            console.warn("Veri gelmedi, manuel moda geçiliyor.");
+            setStep('prompt'); 
+        }, 5000);
+        return () => clearTimeout(timer);
+    }
 
     // Supabase'den gelen status 'approved' ise geç
     if (currentData.status === 'approved') {
