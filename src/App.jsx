@@ -315,6 +315,8 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
                  const snapshot = await uploadBytes(storageRef, file);
                  const downloadURL = await getDownloadURL(snapshot.ref);
                  
+                 logActivity('PROOF_UPLOADED', 'Fotoğraf yüklendi. URL veritabanına kaydedildi.');
+
                  updateProgress({ 
                      status: 'waiting_approval', 
                      uploadedAt: new Date().toISOString(),
