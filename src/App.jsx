@@ -403,26 +403,26 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
 
     const handleReset = async () => {
         if (confirm("DİKKAT: Bu işlem Merve'nin tüm ilerlemesini ve veritabanını sıfırlar. Emin misin?")) {
+            // 1. Önce Local Storage'ı ve State'i temizle (Hata olsa bile bu çalışsın)
+            localStorage.removeItem('merve_universe_v23');
+            setGameStage(0);
+            
             try {
-                // 1. Veritabanını sıfırla
-                const { error } = await supabase.from(GAME_TABLE).upsert({ 
-                    id: GAME_ROW_ID, 
+                // 2. Veritabanını sıfırla
+                await supabase.from(GAME_TABLE).update({ 
                     stage: 0, 
                     status: 'init', 
                     lastUpdate: new Date().toISOString(), 
                     history: [],
-                    proofUrl: null // Kanıt URL'sini de temizle
-                });
+                    proofUrl: null 
+                }).eq('id', GAME_ROW_ID);
                 
-                if (error) throw error;
-
-                // 2. Local Storage'ı temizle (Kendi tarayıcın için)
-                localStorage.removeItem('merve_universe_v23');
-                
+            } catch (e) {
+                console.error("Sıfırlama hatası:", e);
+                alert("Sunucu sıfırlanamadı ama yerel veriler temizlendi.");
+            } finally {
                 // 3. Sayfayı yenile
                 window.location.reload();
-            } catch (e) {
-                alert("Sıfırlama hatası: " + e.message);
             }
         }
     };
