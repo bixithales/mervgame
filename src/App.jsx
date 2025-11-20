@@ -478,8 +478,8 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
                             </div>
                         </div>
 
-                        {/* Approval Section - Shows if waiting for approval OR has proof */}
-                        {(currentData?.status === 'waiting_approval' || currentData?.proofUrl) && (
+                        {/* Approval Section - Shows if waiting for approval OR has proof OR is on stage 5 */}
+                        {(currentData?.stage === 5 || currentData?.status === 'waiting_approval' || currentData?.proofUrl) && (
                             <div className="border border-green-900 p-3 bg-black/50 rounded">
                                 <p className="mb-2 font-bold text-yellow-500 text-xs flex items-center gap-2"><AlertOctagon size={12}/> ONAY BEKLEYEN İŞLEM:</p>
                                 
@@ -659,6 +659,18 @@ export default function App() {
         const { data, error } = await supabase.from(GAME_TABLE).select('*').eq('id', GAME_ROW_ID).single();
         if (data) {
             setServerData(data);
+            
+            // FORCE RESET IF SERVER IS AT 0 BUT LOCAL IS AHEAD
+            if (data.stage === 0 && data.status === 'init') {
+                 const localStage = parseInt(localStorage.getItem('merve_universe_v23') || '0');
+                 if (localStage > 0) {
+                     console.log("Server is reset, clearing local state on load");
+                     localStorage.removeItem('merve_universe_v23');
+                     setGameStage(0);
+                     setIntroStep(0);
+                     startIntro();
+                 }
+            }
         } else if (!data && !error) {
             // Create initial row if not exists
             await supabase.from(GAME_TABLE).insert([{ id: GAME_ROW_ID, stage: 0, status: 'init', history: [] }]);
