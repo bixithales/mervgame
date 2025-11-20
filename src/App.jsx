@@ -9,11 +9,37 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error("Supabase anahtarları eksik! Lütfen .env dosyasını veya Vercel ayarlarını kontrol edin.");
-}
+let supabase;
+let supabaseError = null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+try {
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+        throw new Error("Supabase API anahtarları bulunamadı.");
+    }
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+} catch (error) {
+    console.error("Supabase başlatma hatası:", error);
+    supabaseError = error.message;
+    // Hata durumunda uygulamanın çökmemesi için sahte (dummy) bir istemci oluşturuyoruz
+    supabase = {
+        from: () => ({
+            select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: { message: "Bağlantı yok" } }) }) }),
+            insert: () => Promise.resolve({ error: { message: "Bağlantı yok" } }),
+            update: () => Promise.resolve({ error: { message: "Bağlantı yok" } }),
+            upsert: () => Promise.resolve({ error: { message: "Bağlantı yok" } }),
+        }),
+        storage: {
+            from: () => ({
+                upload: () => Promise.resolve({ error: { message: "Bağlantı yok" } }),
+                getPublicUrl: () => ({ data: { publicUrl: "" } })
+            })
+        },
+        channel: () => ({
+            on: () => ({ subscribe: () => {} })
+        }),
+        removeChannel: () => {}
+    };
+}
 
 const GAME_TABLE = "games";
 const GAME_ROW_ID = "merve_progress"; // Tek bir satır kullanacağız
@@ -499,6 +525,20 @@ const logActivity = async (type, detail) => {
 
 // --- Ana Uygulama ---
 export default function App() {
+  if (supabaseError) {
+      return (
+          <div className="w-full h-screen bg-black flex flex-col items-center justify-center text-red-500 p-4 text-center font-mono">
+              <AlertOctagon size={48} className="mb-4" />
+              <h1 className="text-2xl font-bold mb-2">SİSTEM HATASI</h1>
+              <p className="mb-4">{supabaseError}</p>
+              <div className="text-sm text-gray-400 border border-gray-800 p-4 rounded bg-gray-900/50 max-w-lg">
+                  <p className="mb-2">Netlify veya Vercel ayarlarında Environment Variables eksik.</p>
+                  <p>Lütfen <strong>VITE_SUPABASE_URL</strong> ve <strong>VITE_SUPABASE_ANON_KEY</strong> değerlerini ekleyip tekrar deploy edin.</p>
+              </div>
+          </div>
+      );
+  }
+
   const [gameStage, setGameStage] = useState(0); 
   const [introStep, setIntroStep] = useState(0);
   const [password, setPassword] = useState("");
