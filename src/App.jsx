@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, ArrowRight, HelpCircle, Key, Rocket, Star, Heart, ShieldCheck, DoorOpen, RefreshCcw, Infinity, Upload, Scan, AlertOctagon, Eye, Settings, Radio } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // --- FIREBASE KURULUMU ---
@@ -232,7 +232,12 @@ const UndertaleBattle = ({ level, failures, onWin, onLose }) => {
 const MinimalMap = ({ unlockedLevel, onLevelSelect, onFinalSubmit }) => {
     const [friskPos, setFriskPos] = useState({ left: 10, bottom: 20 }); const [isWalking, setIsWalking] = useState(false); const [mandalaInput, setMandalaInput] = useState(""); const [mandalaError, setMandalaError] = useState(false);
     const handleDoorClick = (level) => { if (unlockedLevel < level) return; const targets = { 1: { left: 20, bottom: 40 }, 2: { left: 50, bottom: 40 }, 3: { left: 80, bottom: 40 } }; const target = targets[level]; setIsWalking(true); setFriskPos(target); setTimeout(() => { setIsWalking(false); onLevelSelect(level); }, 1500); };
-    const handleMandalaSubmit = (e) => { e.preventDefault(); if (mandalaInput.trim().toLocaleUpperCase('tr-TR') === 'MANDALA') { onFinalSubmit(); } else { setMandalaError(true); setTimeout(() => setMandalaError(false), 1000); } };
+    const handleMandalaSubmit = (e) => { 
+        e.preventDefault(); 
+        logActivity('MANDALA_ATTEMPT', mandalaInput);
+        if (mandalaInput.trim().toLocaleUpperCase('tr-TR') === 'MANDALA') { onFinalSubmit(); } 
+        else { setMandalaError(true); setTimeout(() => setMandalaError(false), 1000); } 
+    };
     return ( <div className="w-full max-w-xl bg-black/80 border-2 border-gray-700 p-4 rounded-lg flex flex-col items-center gap-4 shadow-2xl relative overflow-hidden" style={{height: '480px'}}> <div className="absolute inset-0 pointer-events-none"><div className="absolute bottom-0 w-full h-1 bg-white/20"></div></div> <h2 className="text-gray-400 font-orbitron text-sm z-20 tracking-[0.3em]">BÖLGELER</h2> <div className="absolute z-30 transition-all duration-[1500ms] ease-in-out" style={{ left: `${friskPos.left}%`, bottom: `${friskPos.bottom}%` }}> <BabyAvatar isWalking={isWalking} /> </div> <div className="absolute bottom-[40%] w-full flex justify-around z-10"> {[1, 2, 3].map((lvl) => ( <button key={lvl} onClick={() => handleDoorClick(lvl)} disabled={unlockedLevel < lvl} className={`relative flex flex-col items-center transition-transform ${unlockedLevel >= lvl ? 'hover:scale-110 cursor-pointer opacity-100' : 'opacity-30 grayscale'}`}> <div className={`w-16 h-24 border-2 relative flex items-center justify-center rounded-t-full transition-all duration-500 ${unlockedLevel >= lvl ? 'border-white bg-white/5 shadow-[0_0_20px_rgba(255,255,255,0.2)]' : 'border-gray-600'}`}> {unlockedLevel > lvl ? <Star className="text-yellow-400 w-6 h-6"/> : (unlockedLevel === lvl ? <DoorOpen className="text-white w-6 h-6 animate-pulse"/> : <Lock className="text-gray-600 w-4 h-4"/>)} </div> <div className="mt-2 text-[9px] font-orbitron text-gray-400 tracking-widest">KAPI {['I', 'II', 'III'][lvl-1]}</div> </button> ))} </div> {unlockedLevel >= 4 && ( <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="absolute bottom-4 w-full px-8 z-40"> <form onSubmit={handleMandalaSubmit} className="flex flex-col gap-2 items-center"> <input type="text" value={mandalaInput} onChange={(e) => setMandalaInput(e.target.value)} placeholder="ŞİFREYİ BİRLEŞTİR" className={`w-full bg-transparent border-b-2 py-2 text-center text-white font-pixel text-sm focus:outline-none ${mandalaError ? 'border-red-500 placeholder:text-red-500 animate-shake' : 'border-gray-500 focus:border-yellow-400'}`} /> {mandalaInput.trim().toLocaleUpperCase('tr-TR') === 'MANDALA' ? ( <button type="submit" className="w-full py-2 bg-green-600 hover:bg-green-500 text-white font-orbitron text-xs rounded animate-pulse">İLERLE</button> ) : ( mandalaError && ( <button type="button" onClick={() => setMandalaInput("")} className="w-full py-2 bg-red-900/50 hover:bg-red-800/50 text-red-200 font-pixel text-[10px] rounded border border-red-500">HATALI - TEKRAR DENE</button> ) )} </form> </motion.div> )} </div> );
 };
 const UndertaleManager = ({ onComplete }) => {
@@ -266,6 +271,7 @@ const ClassicWordle = ({ onSuccess, onError }) => {
   const submitGuess = async () => { 
       if (currentGuess.length !== 5) { setShake(true); setTimeout(() => setShake(false), 500); return; } 
       setLocked(true); 
+      logActivity('WORDLE_GUESS', currentGuess);
       const colors = Array(5).fill(""); const answerChars = WORDLE_ANSWER.split(""); 
       currentGuess.split("").forEach((c, i) => { if(c===answerChars[i]) { colors[i]="bg-green-600 border-green-500"; answerChars[i]=null; } }); 
       currentGuess.split("").forEach((c, i) => { if(!colors[i] && answerChars.includes(c)) { colors[i]="bg-yellow-600 border-yellow-500"; answerChars[answerChars.indexOf(c)]=null; } else if(!colors[i]) colors[i]="bg-gray-700 border-gray-600"; }); 
@@ -371,23 +377,75 @@ const AdminPanel = ({ onClose, currentData }) => {
         }
         onClose();
     };
+    
+    // Sort history by timestamp descending (newest first)
+    const logs = currentData?.history ? [...currentData.history].reverse() : [];
+
     return (
         <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-green-500 p-6 rounded w-full max-w-md font-mono text-green-500 max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-4"> <h2 className="text-xl font-bold">ADMIN CONSOLE</h2> <button onClick={onClose}>X</button> </div>
-                <div className="mb-4 text-xs border border-green-900 p-2"> 
-                    <p>User Stage: {currentData?.stage || 0}</p> 
-                    <p>Status: {currentData?.status || 'N/A'}</p> 
-                    {currentData?.proofUrl && (
-                        <div className="mt-4 border-t border-green-900 pt-2">
-                            <p className="mb-2 font-bold text-yellow-500">YÜKLENEN KANIT:</p>
-                            <a href={currentData.proofUrl} target="_blank" rel="noopener noreferrer" className="block border border-green-700 hover:border-green-400 transition-colors">
-                                <img src={currentData.proofUrl} alt="Kullanıcı Kanıtı" className="w-full h-auto" />
-                            </a>
-                        </div>
-                    )}
+            <div className="bg-gray-900 border border-green-500 p-6 rounded w-full max-w-4xl font-mono text-green-500 max-h-[90vh] overflow-y-auto flex flex-col gap-4 shadow-[0_0_50px_rgba(0,255,0,0.2)]">
+                <div className="flex justify-between items-center border-b border-green-800 pb-2"> 
+                    <h2 className="text-xl font-bold tracking-widest">ADMIN CONSOLE v2.0</h2> 
+                    <button onClick={onClose} className="hover:text-white text-xl">&times;</button> 
                 </div>
-                <div className="flex flex-col gap-2"> <button onClick={handleApprove} className="p-2 bg-green-800 text-black hover:bg-green-600 font-bold"> [ FOTOĞRAFI ONAYLA ] </button> <button onClick={handleReset} className="p-2 border border-red-500 text-red-500 hover:bg-red-900/20"> ! RESET SYSTEM ! </button> </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Left Column: Status & Controls */}
+                    <div className="flex flex-col gap-4">
+                        <div className="text-xs border border-green-900 p-3 bg-black/50 rounded"> 
+                            <p className="font-bold text-green-400 mb-2 border-b border-green-900/50 pb-1">SYSTEM STATUS</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                <span className="text-gray-500">User Stage:</span> <span className="text-white font-bold">{currentData?.stage || 0}</span>
+                                <span className="text-gray-500">Status:</span> <span className="text-white font-bold">{currentData?.status || 'N/A'}</span>
+                                <span className="text-gray-500">Last Update:</span> <span className="text-white">{currentData?.lastUpdate ? new Date(currentData.lastUpdate).toLocaleTimeString() : 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        {currentData?.proofUrl && (
+                            <div className="border border-green-900 p-3 bg-black/50 rounded">
+                                <p className="mb-2 font-bold text-yellow-500 text-xs flex items-center gap-2"><AlertOctagon size={12}/> YÜKLENEN KANIT:</p>
+                                <a href={currentData.proofUrl} target="_blank" rel="noopener noreferrer" className="block border border-green-700 hover:border-green-400 transition-colors rounded overflow-hidden relative group">
+                                    <div className="absolute inset-0 bg-black/50 group-hover:bg-transparent transition-all z-10 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                        <span className="bg-black/80 text-white text-[10px] px-2 py-1 rounded">BÜYÜT</span>
+                                    </div>
+                                    <img src={currentData.proofUrl} alt="Kullanıcı Kanıtı" className="w-full h-48 object-cover" />
+                                </a>
+                                <button onClick={handleApprove} className="w-full mt-3 p-2 bg-green-900/50 hover:bg-green-600 hover:text-black text-green-400 border border-green-700 font-bold text-xs rounded transition-all"> [ FOTOĞRAFI ONAYLA ] </button>
+                            </div>
+                        )}
+                        
+                        <button onClick={handleReset} className="p-3 border border-red-900/50 bg-red-900/10 text-red-500 hover:bg-red-900/30 text-xs mt-auto rounded transition-all flex items-center justify-center gap-2"> <AlertOctagon size={14}/> RESET SYSTEM (DANGER) </button>
+                    </div>
+
+                    {/* Right Column: Activity Logs */}
+                    <div className="border border-green-900 p-3 bg-black/50 rounded flex flex-col h-[500px]">
+                        <div className="flex justify-between items-center mb-2 border-b border-green-900/50 pb-2">
+                            <p className="font-bold text-green-400 text-xs flex items-center gap-2"><Scan size={12}/> ACTIVITY LOGS</p>
+                            <span className="text-[10px] text-gray-500">{logs.length} RECORDS</span>
+                        </div>
+                        <div className="overflow-y-auto flex-1 flex flex-col gap-1 pr-1 custom-scrollbar">
+                            {logs.length === 0 ? (
+                                <div className="h-full flex flex-col items-center justify-center text-gray-600 gap-2">
+                                    <Radio size={24} className="animate-pulse"/>
+                                    <p className="text-[10px] italic">No signals detected yet...</p>
+                                </div>
+                            ) : (
+                                logs.map((log, i) => (
+                                    <div key={i} className="text-[10px] border-b border-green-900/20 pb-1 mb-1 last:border-0 hover:bg-green-900/10 p-1 rounded transition-colors">
+                                        <div className="flex justify-between text-gray-500 mb-0.5">
+                                            <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                            <span className="text-[9px] opacity-50">{new Date(log.timestamp).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className={`font-bold ${log.type.includes('ERROR') ? 'text-red-400' : (log.type.includes('SUCCESS') ? 'text-green-400' : 'text-yellow-500')}`}>{log.type}:</span>
+                                            <span className="text-gray-300 break-all font-mono">{log.detail}</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     )
@@ -400,6 +458,20 @@ const updateProgress = async (data) => {
         const docRef = doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID);
         await updateDoc(docRef, data);
     } catch (e) { console.error("Update failed", e); }
+};
+
+const logActivity = async (type, detail) => {
+    try {
+        if (!auth.currentUser) return;
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID);
+        await updateDoc(docRef, {
+            history: arrayUnion({
+                type: type,
+                detail: detail,
+                timestamp: new Date().toISOString()
+            })
+        });
+    } catch (e) { console.error("Log failed", e); }
 };
 
 // --- Ana Uygulama ---
@@ -468,9 +540,25 @@ export default function App() {
   };
   const triggerError = () => { setError(true); setErrorCount(c=>c+1); setTimeout(()=>setError(false),500); };
 
-  const handleLogin1 = (e) => { e.preventDefault(); if(password.trim().toUpperCase('TR')==='DÜNYA') { saveProgress(1); setPassword(""); } else if(password.trim() === 'ADMIN') { setShowAdmin(true); } else triggerError(); };
-  const handleLogin2 = (e) => { e.preventDefault(); if(password.trim().toUpperCase('TR')==='GEZEGEN') { saveProgress(3); setPassword(""); } else triggerError(); }; 
-  const handleLogin3 = (e) => { e.preventDefault(); if(password.trim().toUpperCase('TR')==='SONSUZLUK') { saveProgress(5); setPassword(""); } else triggerError(); }; 
+  const handleLogin1 = (e) => { 
+      e.preventDefault(); 
+      logActivity('LOGIN_ATTEMPT_1', password);
+      if(password.trim().toUpperCase('TR')==='DÜNYA') { saveProgress(1); setPassword(""); } 
+      else if(password.trim() === 'ADMIN') { setShowAdmin(true); } 
+      else triggerError(); 
+  };
+  const handleLogin2 = (e) => { 
+      e.preventDefault(); 
+      logActivity('LOGIN_ATTEMPT_2', password);
+      if(password.trim().toUpperCase('TR')==='GEZEGEN') { saveProgress(3); setPassword(""); } 
+      else triggerError(); 
+  }; 
+  const handleLogin3 = (e) => { 
+      e.preventDefault(); 
+      logActivity('LOGIN_ATTEMPT_3', password);
+      if(password.trim().toUpperCase('TR')==='SONSUZLUK') { saveProgress(5); setPassword(""); } 
+      else triggerError(); 
+  }; 
   
   const handleWordleSuccess = () => { saveProgress(2); setPassword(""); };
   const handleUndertaleSuccess = () => { saveProgress(4); setPassword(""); }; 
