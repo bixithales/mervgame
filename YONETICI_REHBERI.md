@@ -46,4 +46,6 @@ Merve 5. Bölüme (Karanlık Bölüm) geldiğinde sistem ondan bir fotoğraf yü
 ## ⚠️ Acil Durumlar
 
 *   **Merve takılırsa:** Paneldeki "User Stage" kısmına bakarak nerede olduğunu anlayabilirsiniz.
-*   **Sistemi sıfırlamak isterseniz:** Panelde en altta **"MERVE'Yİ SIFIRLA"** butonu var. Buna basarsanız oyun en başa döner (Merve için de). **Dikkatli kullanın!**
+*   **Sistemi sıfırlamak isterseniz:** Panelde en altta **"MERVE'Yİ SIFIRLA"** butonu var. 
+    *   🔴 **ÖNEMLİ:** Bu butona bastığınız anda, oyuna bağlı olan **HERKESİN (Sizin ve Merve'nin)** ekranı kararır ve oyun en başa (Giriş Ekranı) döner.
+    *   Bu işlem geri alınamaz. Oyun tamamen sıfırlanır.
