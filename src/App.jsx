@@ -401,11 +401,29 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
 const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
     const [testStatus, setTestStatus] = useState('');
 
-    const handleReset = () => {
+    const handleReset = async () => {
         if (confirm("DİKKAT: Bu işlem Merve'nin tüm ilerlemesini ve veritabanını sıfırlar. Emin misin?")) {
-            supabase.from(GAME_TABLE).upsert({ id: GAME_ROW_ID, stage: 0, status: 'init', lastUpdate: new Date().toISOString(), history: [] }).then(() => {
-                onClose();
-            });
+            try {
+                // 1. Veritabanını sıfırla
+                const { error } = await supabase.from(GAME_TABLE).upsert({ 
+                    id: GAME_ROW_ID, 
+                    stage: 0, 
+                    status: 'init', 
+                    lastUpdate: new Date().toISOString(), 
+                    history: [],
+                    proofUrl: null // Kanıt URL'sini de temizle
+                });
+                
+                if (error) throw error;
+
+                // 2. Local Storage'ı temizle (Kendi tarayıcın için)
+                localStorage.removeItem('merve_universe_v23');
+                
+                // 3. Sayfayı yenile
+                window.location.reload();
+            } catch (e) {
+                alert("Sıfırlama hatası: " + e.message);
+            }
         }
     };
     const handleApprove = () => {
