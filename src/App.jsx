@@ -478,16 +478,26 @@ const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
                             </div>
                         </div>
 
-                        {currentData?.proofUrl && (
+                        {/* Approval Section - Shows if waiting for approval OR has proof */}
+                        {(currentData?.status === 'waiting_approval' || currentData?.proofUrl) && (
                             <div className="border border-green-900 p-3 bg-black/50 rounded">
-                                <p className="mb-2 font-bold text-yellow-500 text-xs flex items-center gap-2"><AlertOctagon size={12}/> YÜKLENEN KANIT:</p>
-                                <a href={currentData.proofUrl} target="_blank" rel="noopener noreferrer" className="block border border-green-700 hover:border-green-400 transition-colors rounded overflow-hidden relative group">
-                                    <div className="absolute inset-0 bg-black/50 group-hover:bg-transparent transition-all z-10 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                        <span className="bg-black/80 text-white text-[10px] px-2 py-1 rounded">BÜYÜT</span>
+                                <p className="mb-2 font-bold text-yellow-500 text-xs flex items-center gap-2"><AlertOctagon size={12}/> ONAY BEKLEYEN İŞLEM:</p>
+                                
+                                {currentData?.proofUrl ? (
+                                    <a href={currentData.proofUrl} target="_blank" rel="noopener noreferrer" className="block border border-green-700 hover:border-green-400 transition-colors rounded overflow-hidden relative group">
+                                        <div className="absolute inset-0 bg-black/50 group-hover:bg-transparent transition-all z-10 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                            <span className="bg-black/80 text-white text-[10px] px-2 py-1 rounded">BÜYÜT</span>
+                                        </div>
+                                        <img src={currentData.proofUrl} alt="Kullanıcı Kanıtı" className="w-full h-48 object-cover" />
+                                    </a>
+                                ) : (
+                                    <div className="p-4 border border-red-500/30 bg-red-900/10 text-red-400 text-xs text-center rounded">
+                                        <p>⚠️ Görüntü yüklenemedi veya URL hatalı.</p>
+                                        <p className="mt-1 opacity-70">Yine de aşağıdan onaylayarak oyunu devam ettirebilirsiniz.</p>
                                     </div>
-                                    <img src={currentData.proofUrl} alt="Kullanıcı Kanıtı" className="w-full h-48 object-cover" />
-                                </a>
-                                <button onClick={handleApprove} className="w-full mt-3 p-2 bg-green-900/50 hover:bg-green-600 hover:text-black text-green-400 border border-green-700 font-bold text-xs rounded transition-all"> [ FOTOĞRAFI ONAYLA ] </button>
+                                )}
+                                
+                                <button onClick={handleApprove} className="w-full mt-3 p-2 bg-green-900/50 hover:bg-green-600 hover:text-black text-green-400 border border-green-700 font-bold text-xs rounded transition-all"> [ AŞAMAYI ONAYLA VE GEÇ ] </button>
                             </div>
                         )}
                         
