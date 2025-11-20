@@ -319,7 +319,12 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
     } else if (currentData.status === 'waiting_approval') {
       setStep('pending');
     } else {
-      setStep('prompt');
+      // Eğer status 'init' veya başka bir şeyse ve proofUrl varsa, yine de pending göster
+      if (currentData.proofUrl) {
+          setStep('pending');
+      } else {
+          setStep('prompt');
+      }
     }
   }, [currentData, onSuccess]);
 
