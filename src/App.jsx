@@ -626,10 +626,20 @@ export default function App() {
                     const data = payload.new;
                     setServerData(data);
                     
-                    const localStage = parseInt(localStorage.getItem('merve_universe_v23') || '0');
-                    if (localStage > 0 && data.stage !== undefined && data.stage > localStage) {
-                        setGameStage(data.stage);
-                        localStorage.setItem('merve_universe_v23', data.stage.toString());
+                    // GLOBAL RESET DETECTION
+                    if (data.stage === 0 && data.status === 'init') {
+                        console.log("Global reset detected!");
+                        localStorage.removeItem('merve_universe_v23');
+                        setGameStage(0);
+                        setIntroStep(0);
+                        // Force reload to ensure clean state if needed, but state update is smoother
+                        // window.location.reload(); 
+                    } else {
+                        const localStage = parseInt(localStorage.getItem('merve_universe_v23') || '0');
+                        if (localStage > 0 && data.stage !== undefined && data.stage > localStage) {
+                            setGameStage(data.stage);
+                            localStorage.setItem('merve_universe_v23', data.stage.toString());
+                        }
                     }
                 }
             )
