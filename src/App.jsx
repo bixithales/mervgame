@@ -574,6 +574,19 @@ export default function App() {
     <div className="relative w-full h-screen bg-black overflow-hidden font-sans selection:bg-orange-500 selection:text-white">
       <FontStyles />
       <div className="scanlines"></div>
+      
+      {/* GLOBAL ADMIN ACCESS BUTTON */}
+      <button 
+        onClick={() => {
+            const pwd = prompt("Sistem Erişim Şifresi:");
+            if (pwd === "ADMIN") setShowAdmin(true);
+        }}
+        className="fixed top-4 right-4 z-[90] text-gray-800 hover:text-white transition-colors opacity-50 hover:opacity-100"
+        title="Admin Girişi"
+      >
+        <Settings size={20} />
+      </button>
+
       {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} currentData={serverData} />}
       <ThreeScene gameStage={gameStage} errorCount={errorCount} />
       <div className="absolute inset-0 pointer-events-none z-0" style={{ background: `radial-gradient(circle, transparent 60%, rgba(${gameStage===5 ? 50 : Math.min(errorCount*40,200)},0,0,${gameStage===5 ? 0.9 : Math.min(errorCount*0.1,0.6)}) 100%)` }} />
