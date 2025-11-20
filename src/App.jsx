@@ -287,16 +287,20 @@ const ClassicWordle = ({ onSuccess, onError }) => {
 
 // --- Karanlık Aşaması (Gerçek Onaylı - İnsan Kontrolü) ---
 const DarkChallenge = ({ onSuccess, currentData }) => {
-  const [step, setStep] = useState('prompt'); // prompt, uploading, pending
+  const [step, setStep] = useState('loading'); // Başlangıçta yükleniyor
   const [error, setError] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
+    if (!currentData) return; // Veri gelene kadar bekle
+
     // Firebase'den gelen status 'approved' ise geç
-    if (currentData?.status === 'approved') {
+    if (currentData.status === 'approved') {
       onSuccess();
-    } else if (currentData?.status === 'waiting_approval') {
+    } else if (currentData.status === 'waiting_approval') {
       setStep('pending');
+    } else {
+      setStep('prompt');
     }
   }, [currentData, onSuccess]);
 
@@ -306,8 +310,6 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
         // Offline mode için
         if (!auth.currentUser) {
              setStep('pending');
-             // Offline modda onay simülasyonu (Test için)
-             // setTimeout(() => onSuccess(), 5000); 
         } else {
              try {
                  setStep('pending'); // Yükleniyor göstergesi eklenebilir
@@ -330,6 +332,8 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
         }
     }
   };
+
+  if (step === 'loading') return <div className="text-yellow-500 font-orbitron animate-pulse tracking-widest">BAĞLANTI KURULUYOR...</div>;
 
   return (
     <div className="w-full max-w-md mx-auto z-50 p-6 bg-black/80 backdrop-blur-xl rounded-lg border border-gray-800 flex flex-col items-center gap-6 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
@@ -366,16 +370,19 @@ const DarkChallenge = ({ onSuccess, currentData }) => {
 };
 
 // --- Admin Paneli (Gizli) ---
-const AdminPanel = ({ onClose, currentData }) => {
+const AdminPanel = ({ onClose, currentData, onLocalReset }) => {
     const handleReset = () => {
-        if (auth.currentUser) {
-             setDoc(doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID), { stage: 0, status: 'init', lastUpdate: new Date().toISOString() });
+        if (confirm("DİKKAT: Bu işlem Merve'nin tüm ilerlemesini ve veritabanını sıfırlar. Emin misin?")) {
+            if (auth.currentUser) {
+                setDoc(doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID), { stage: 0, status: 'init', lastUpdate: new Date().toISOString() });
+            }
+            onClose();
         }
-        onClose();
     };
     const handleApprove = () => {
         if (auth.currentUser) {
              updateDoc(doc(db, 'artifacts', appId, 'public', 'data', GAME_COLLECTION, GAME_DOC_ID), { status: 'approved', stage: 6 });
+             logActivity('ADMIN_ACTION', 'Kanıt onaylandı. Kullanıcı final aşamasına geçirildi.');
         }
         onClose();
     };
@@ -387,7 +394,7 @@ const AdminPanel = ({ onClose, currentData }) => {
         <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-4">
             <div className="bg-gray-900 border border-green-500 p-6 rounded w-full max-w-4xl font-mono text-green-500 max-h-[90vh] overflow-y-auto flex flex-col gap-4 shadow-[0_0_50px_rgba(0,255,0,0.2)]">
                 <div className="flex justify-between items-center border-b border-green-800 pb-2"> 
-                    <h2 className="text-xl font-bold tracking-widest">ADMIN CONSOLE v2.0</h2> 
+                    <h2 className="text-xl font-bold tracking-widest">ADMIN CONSOLE v2.1</h2> 
                     <button onClick={onClose} className="hover:text-white text-xl">&times;</button> 
                 </div>
                 
@@ -416,7 +423,14 @@ const AdminPanel = ({ onClose, currentData }) => {
                             </div>
                         )}
                         
-                        <button onClick={handleReset} className="p-3 border border-red-900/50 bg-red-900/10 text-red-500 hover:bg-red-900/30 text-xs mt-auto rounded transition-all flex items-center justify-center gap-2"> <AlertOctagon size={14}/> RESET SYSTEM (DANGER) </button>
+                        <div className="mt-auto flex flex-col gap-2">
+                            <button onClick={onLocalReset} className="p-3 border border-blue-900/50 bg-blue-900/10 text-blue-400 hover:bg-blue-900/30 text-xs rounded transition-all flex items-center justify-center gap-2"> 
+                                <RefreshCcw size={14}/> BENİM EKRANIMI SIFIRLA (ÇIKIŞ) 
+                            </button>
+                            <button onClick={handleReset} className="p-3 border border-red-900/50 bg-red-900/10 text-red-500 hover:bg-red-900/30 text-xs rounded transition-all flex items-center justify-center gap-2"> 
+                                <AlertOctagon size={14}/> MERVE'Yİ SIFIRLA (RESET SYSTEM) 
+                            </button>
+                        </div>
                     </div>
 
                     {/* Right Column: Activity Logs */}
@@ -585,6 +599,13 @@ export default function App() {
 
   const fade = { hidden:{opacity:0,blur:"10px"}, visible:{opacity:1,blur:"0px",transition:{duration:1.5}}, exit:{opacity:0} };
 
+  const handleLocalReset = () => {
+      localStorage.removeItem('merve_universe_v23');
+      setGameStage(0);
+      setIntroStep(3); 
+      window.location.reload();
+  };
+
   if (loading) return <div className="bg-black h-screen w-full flex items-center justify-center text-white font-cinzel tracking-widest">SİNYAL ARANIYOR...</div>;
 
   return (
@@ -604,7 +625,7 @@ export default function App() {
         <Settings size={20} />
       </button>
 
-      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} currentData={serverData} />}
+      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} currentData={serverData} onLocalReset={handleLocalReset} />}
       <ThreeScene gameStage={gameStage} errorCount={errorCount} />
       <div className="absolute inset-0 pointer-events-none z-0" style={{ background: `radial-gradient(circle, transparent 60%, rgba(${gameStage===5 ? 50 : Math.min(errorCount*40,200)},0,0,${gameStage===5 ? 0.9 : Math.min(errorCount*0.1,0.6)}) 100%)` }} />
 
