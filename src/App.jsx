@@ -757,7 +757,7 @@ export default function App() {
   const handleLogin3 = (e) => { 
       e.preventDefault(); 
       logActivity('LOGIN_ATTEMPT_3', password);
-      if(password.trim().toUpperCase('TR')==='SONSUZLUK') { saveProgress(5); setPassword(""); } 
+      if(password.trim().toUpperCase('TR')==='TELEFON') { saveProgress(5); setPassword(""); } 
       else triggerError(); 
   }; 
 
