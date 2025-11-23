@@ -866,8 +866,8 @@ export default function App() {
             {/* STAGE 7: REAL FINAL */}
             {gameStage===7 && (
                 <motion.div key="final" variants={fade} initial="hidden" animate="visible" className="text-center">
-                    <h1 className="text-6xl md:text-8xl font-cinzel text-green-500 drop-shadow-[0_0_30px_rgba(0,255,0,0.6)]">BAŞARILI</h1>
-                    <p className="mt-6 text-gray-400 font-orbitron tracking-[0.5em] text-xs">GÖREV TAMAMLANDI</p>
+                    <h1 className="text-5xl md:text-7xl font-cinzel text-green-500 drop-shadow-[0_0_30px_rgba(0,255,0,0.6)]">SEZON FİNALİ</h1>
+                    <p className="mt-6 text-gray-400 font-orbitron tracking-[0.5em] text-xs">YAKINDA GÖRÜŞÜRÜZ</p>
                 </motion.div>
             )}
          </AnimatePresence>
