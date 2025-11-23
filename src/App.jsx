@@ -757,13 +757,13 @@ export default function App() {
   const handleLogin3 = (e) => { 
       e.preventDefault(); 
       logActivity('LOGIN_ATTEMPT_3', password);
-      if(password.trim().toUpperCase('TR')==='TELEFON') { saveProgress(5); setPassword(""); } 
+      if(password.trim().toUpperCase('TR')==='SONSUZLUK') { saveProgress(5); setPassword(""); } 
       else triggerError(); 
   }; 
 
   const handleLogin4 = (pass) => {
       logActivity('LOGIN_ATTEMPT_FINAL', pass);
-      if(pass.trim().toLocaleUpperCase('tr-TR') === 'HAZİNE') { 
+      if(pass.trim().toLocaleUpperCase('tr-TR') === 'YILDÖNÜMÜ') { 
           saveProgress(7); 
       } else { 
           triggerError(); 
@@ -843,7 +843,7 @@ export default function App() {
             {/* STAGE 4: LOGIN 3 (SONSUZLUK) */}
             {gameStage===4 && (
                 <motion.div key="l3" variants={fade} initial="hidden" animate="visible" exit="exit" className="w-full max-w-md flex flex-col items-center gap-6 bg-black/40 p-8 rounded-2xl border border-purple-500/30 backdrop-blur-md shadow-[0_0_50px_rgba(128,0,128,0.2)]">
-                    <Infinity className={`w-12 h-12 ${errorCount>3?'text-red-500 animate-pulse':'text-purple-400'}`} />
+                    <HelpCircle className={`w-12 h-12 ${errorCount>3?'text-red-500 animate-pulse':'text-purple-400'}`} />
                     <h2 className="text-2xl font-orbitron text-purple-100 tracking-widest text-center">ŞİFREYİ GİRİN</h2>
                     <form onSubmit={handleLogin3} className="w-full"><input type="text" autoFocus value={password} onChange={e=>setPassword(e.target.value)} placeholder="......" className={`w-full bg-transparent border-b py-3 text-center text-2xl text-white font-cinzel focus:outline-none transition-colors ${error?'border-red-500 text-red-500':'border-purple-500/30 focus:border-purple-400'}`} /><button type="submit" className="w-full mt-6 py-3 bg-purple-900/30 hover:bg-purple-900/50 rounded text-purple-400 font-orbitron tracking-widest transition-all">KAPIYI AÇ</button></form>
                 </motion.div>
